@@ -1,8 +1,12 @@
 % normalization
 
-function normalization(src_folder_name,dst_folder_name,fileroot_name,channels,target_rounds,do_downsample)
+function normalization(src_folder_name,dst_folder_name,fileroot_name,channels,target_rounds,do_downsample,do_overwrite)
 
+    
     total_round_num = length(target_rounds);
+    if nargin == 6
+        do_overwrite = false;
+    end 
     if length(channels) ~= 4
         disp('# of channels is not 4.')
         return
@@ -27,7 +31,7 @@ function normalization(src_folder_name,dst_folder_name,fileroot_name,channels,ta
         if (roundnum <= total_round_num) && (sum(running_jobs) < max_running_jobs)
             disp(['create batch (',num2str(roundnum),')'])
             running_jobs(roundnum) = 1;
-            jobs{roundnum} = batch(cluster,@normalizeImage,0,{src_folder_name,dst_folder_name,fileroot_name,channels,target_rounds(roundnum)},'CaptureDiary',true);
+            jobs{roundnum} = batch(cluster,@normalizeImage,0,{src_folder_name,dst_folder_name,fileroot_name,channels,target_rounds(roundnum),do_overwrite},'CaptureDiary',true);
             roundnum = roundnum+1;
         else
             for job_id = find(running_jobs==1)

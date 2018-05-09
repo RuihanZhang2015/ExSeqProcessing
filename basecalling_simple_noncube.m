@@ -1,14 +1,14 @@
 
 
-load(fullfile(params.punctaSubvolumeDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
+load(fullfile(params.transcriptResultsDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
 
-load('groundtruth_dictionary.mat')
+load('groundtruth_dictionary_neurons.mat')
 %% Convert all the data into zscores (very cheap base calling)
 
 %Create a new variable, puncta_set, which is the cropped puncta_set_median
 %for only the bases that we want to call. Given the first three bases are
 %magenta, this could screw things up.
-ROUNDS_TO_CALL = [4 5 6 7 8 9 10 11 12 13 14 15 16 18 20];
+ROUNDS_TO_CALL = [4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20];
 % puncta_set = puncta_set_median_znormalized(ROUNDS_TO_CALL,:,:);
 NUMCALLEDROUNDS = length(ROUNDS_TO_CALL);
 
@@ -42,7 +42,7 @@ end
 
 %% Compare the top 10 brightest (zscore) pixels in each puncta across channels
 
-num_puncta = size(puncta_set,3);
+num_puncta = size(puncta_centroids,1);
 
 %Pre-initialize the cell arrray and determine the basecalls
 
@@ -111,7 +111,7 @@ plot(perc_base(:,2)*100,'g','LineWidth',2)
 plot(perc_base(:,3)*100,'m','LineWidth',2)
 plot(perc_base(:,4)*100,'r','LineWidth',2); hold off;
 legend('Chan1 - FITC','Chan2 - CY3', 'Chan3 - Texas Red', 'Chan4 - Cy5');
-title(sprintf('Percentage of each base across rounds for %i puncta',size(transcripts,1)));
+title(sprintf('Percentage of each base across rounds for %i puncta',size(base_calls_quickzscore,1)));
 
 
 %% Make sets of transcripts and create a new transcript object
@@ -187,14 +187,14 @@ for p_idx = 1:size(base_calls_quickzscore,1)
     clear transcript; %Avoid any accidental overwriting
     
     if mod(p_idx,1000) ==0
-        fprintf('%i/%i matched\n',p_idx,size(puncta_set,6));
+        fprintf('%i/%i matched\n',p_idx,size(base_calls_quickzscore,6));
     end
 end
 fprintf('Done!\n');
 
 output_csv = strjoin(output_cell,'');
 
-output_file = fullfile(params.transcriptResultsDir,sprintf('%s_simpleextractedcodes.csv',params.FILE_BASENAME));
+output_file = fullfile(params.transcriptResultsDir,sprintf('%s_simpleextractedcodes_noncube.csv',params.FILE_BASENAME));
 
 fileID = fopen(output_file,'w');
 fprintf(fileID,output_csv);
@@ -204,6 +204,6 @@ fclose(fileID);
 %remove the transcripts that had an empty round, likely because of the registration
 transcript_objects(discarded_puncta) = [];
 
-save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_objects.mat',params.FILE_BASENAME)),'transcript_objects','-v7.3');
+save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_objects_noncube.mat',params.FILE_BASENAME)),'transcript_objects','ROUNDS_TO_CALL','-v7.3');
 fprintf('Saved transcript_matches_objects!\n');
 

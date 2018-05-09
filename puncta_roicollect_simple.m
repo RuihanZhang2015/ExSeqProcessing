@@ -13,7 +13,7 @@ puncta_set_cell = cell(params.NUM_ROUNDS,1);
 %the puncta indices are here in linear form for a specific round
 
 parpool(5); %arbitrary but this parallel loop is memory intensive
-parfor exp_idx = 1:params.NUM_ROUNDS
+parfor exp_idx = 4:params.NUM_ROUNDS
     disp(['round=',num2str(exp_idx)])
     pixels_per_rnd = cell(num_insitu_transcripts,params.NUM_CHANNELS);
     

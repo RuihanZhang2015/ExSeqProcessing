@@ -558,7 +558,7 @@ if [ ! "${SKIP_STAGES[$stage_idx]}" = "skip" ]; then
         done
 
 #Because the matching is currently single-threaded, we can parpool it in one loop
-matlab -nodisplay -nosplash -logfile ${LOG_DIR}/matlab-registerWDesc-${i}.log -r "parpool; parfor i = 1:20; if i==4;fprintf('Skipping reference round\n');continue;end; calcCorrespondences(i);registerWithCorrespondences(i,true);registerWithCorrespondences(i,false);end;exit;"
+matlab -nodisplay -nosplash -logfile ${LOG_DIR}/matlab-registerWDesc-${i}.log -r "parpool; parfor i = 4:20; if i==4;fprintf('Skipping reference round\n');continue;end; calcCorrespondences(i);registerWithCorrespondences(i,true);registerWithCorrespondences(i,false);end;exit;"
 
         #ifor((i=1; i<=${ROUND_NUM}; i++))
         #do
@@ -589,7 +589,7 @@ echo "puncta extraction"; date
 echo
 
 if [ ! "${SKIP_STAGES[$stage_idx]}" = "skip" ]; then
-matlab -nodisplay -nosplash -logfile ${LOG_DIR}/matlab-puncta-extraction.log -r "${ERR_HDL_PRECODE} loadParameters; punctafeinder_simple; puncta_subvolumes_simple;${ERR_HDL_POSTCODE}"    
+matlab -nodisplay -nosplash -logfile ${LOG_DIR}/matlab-puncta-extraction.log -r "${ERR_HDL_PRECODE} loadParameters; punctafeinder_simple; puncta_roicollect_simple;${ERR_HDL_POSTCODE}"    
 else
     echo "Skip!"
 fi
@@ -604,7 +604,7 @@ echo "base calling"; date
 echo
 
 if [ ! "${SKIP_STAGES[$stage_idx]}" = "skip" ]; then
-    matlab -nodisplay -nosplash -logfile ${LOG_DIR}/matlab-transcript-making.log -r "${ERR_HDL_PRECODE} loadParameters; basecalling_simple;  ${ERR_HDL_POSTCODE}"
+    matlab -nodisplay -nosplash -logfile ${LOG_DIR}/matlab-transcript-making.log -r "${ERR_HDL_PRECODE} loadParameters; basecalling_simple_noncube;  ${ERR_HDL_POSTCODE}"
 else
     echo "Skip!"
 fi
