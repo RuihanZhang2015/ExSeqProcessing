@@ -22,7 +22,7 @@ function varargout = colorCorrection_manual(varargin)
 
 % Edit the above text to modify the response to help colorCorrection_manual
 
-% Last Modified by GUIDE v2.5 08-May-2018 22:10:31
+% Last Modified by GUIDE v2.5 09-May-2018 09:17:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -72,12 +72,13 @@ handles.offsets_chan02 = chan3_offsets;
 handles.offsets_chan03 = chan4_offsets;
 handles.offsets_current = chan2_offsets;
 
-handles.movChan = 1;
+
 
 handles.ref_img = load3DTif_uint16(fullfile(handles.params.deconvolutionImagesDir,...
     sprintf('%s-downsample_round%.03i_ch00.tif',handles.params.FILE_BASENAME,handles.roundnum)));
+
 handles.mov_img = load3DTif_uint16(fullfile(handles.params.deconvolutionImagesDir,...
-    sprintf('%s-downsample_round%.03i_ch01.tif',handles.params.FILE_BASENAME,handles.roundnum)));
+    sprintf('%s-downsample_round%.03i_ch0%i.tif',handles.params.FILE_BASENAME,handles.roundnum,handles.movChan )));
 
 handles.ref_zval = floor(size(handles.ref_img,3)/2);
 
@@ -97,7 +98,8 @@ function colorCorrection_manual_OpeningFcn(hObject, eventdata, handles, varargin
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to colorCorrection_manual (see VARARGIN)
 
-handles.roundnum = 4;
+handles.roundnum = 2;
+handles.movChan = 1;
 handles = loadImages(handles);
 
 %Initialize somethings
