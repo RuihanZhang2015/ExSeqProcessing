@@ -1,5 +1,8 @@
-function normalizeImage(src_folder_name,dst_folder_name,fileroot_name,channels,roundnum)
+function normalizeImage(src_folder_name,dst_folder_name,fileroot_name,channels,roundnum,doOverwrite)
 
+    if nargin==4
+        doOverwrite = false;
+    end
     if (exist(fullfile(src_folder_name,sprintf('%s_round%.03i_%s.tif',fileroot_name,roundnum,channels{1}))) || ...
         exist(fullfile(src_folder_name,sprintf('%s_round%.03i_%s.tif',fileroot_name,roundnum,channels{2}))) || ...
         exist(fullfile(src_folder_name,sprintf('%s_round%.03i_%s.tif',fileroot_name,roundnum,channels{3}))) || ...
@@ -14,7 +17,7 @@ function normalizeImage(src_folder_name,dst_folder_name,fileroot_name,channels,r
     end
 
     outputfile= sprintf('%s/%s_round%03i_summedNorm.tif',dst_folder_name,fileroot_name,roundnum);
-    if exist(outputfile,'file')
+    if exist(outputfile,'file') && ~doOverwrite
         fprintf('%s already exists, skipping\n',outputfile);
         return
     end
