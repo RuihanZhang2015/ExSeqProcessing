@@ -1,12 +1,13 @@
 
 
-load(fullfile(params.transcriptResultsDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
-
-if ~exist('gtlabels','var')
-    load('groundtruth_dictionary_neurons.mat');
-end
+% load(fullfile(params.transcriptResultsDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
+% 
+% if ~exist('gtlabels','var')
+%     load('groundtruth_dictionary_neurons.mat');
+% end
 %load('groundtruth_dictionary_neurons.mat')
-%% Convert all the data into zscores (very cheap base calling)
+%% normalize all puncta intensities by their Z value
+
 
 %Create a new variable, puncta_set, which is the cropped puncta_set_median
 %for only the bases that we want to call. Given the first three bases are
@@ -18,33 +19,48 @@ NUMCALLEDROUNDS = length(ROUNDS_TO_CALL);
 puncta_set_median_znormalized = zeros(size(puncta_set_median));
 
 max_z = max(floor(puncta_centroids(:,3)));
+% Here we 
 for rnd_idx = 1:20
     
     means_z = zeros(max_z,4);
     stds_z = zeros(max_z,4);
+    
     for z = 1:max_z
         indices = find(floor(puncta_centroids(:,3))==z);
+        if length(indices)<=1
+            puncta_set_median_znormalized(rnd_idx,:,indices)=...
+                puncta_set_median(rnd_idx,:,indices);
+            continue 
+        end
+        %Get the statistics for all the puncta with the center at each Z
         for c = 1:4
             means_z(z,c) = mean(puncta_set_median(rnd_idx,c,indices));
             stds_z(z,c) = std(puncta_set_median(rnd_idx,c,indices));
         end
-    end
-    
-    
-    for z = 1:max_z
-        indices = find(floor(puncta_centroids(:,3))==z);
+        
+        %Aply the normalization
         for c = 1:4
             p_nonnorm = squeeze(puncta_set_median(rnd_idx,c,indices));
-            p_norm = (p_nonnorm-means_z(z,c))/stds_z(z,c);
+            
+            if stds_z(z,c) ~= 0
+                p_norm = (p_nonnorm-means_z(z,c))/stds_z(z,c);
+            else %If all the puncta for this chan at this Z are the same
+                p_norm = 0; %this is a rare case but worth catching
+            end
+            if any(isnan(p_norm(:)))
+               barf() 
+            end
             puncta_set_median_znormalized(rnd_idx,c,indices)=p_norm;
         end
     end
+    
+    
+
    
     fprintf('Z-normalized Round%i\n',rnd_idx);
 end
 
-%% Compare the top 10 brightest (zscore) pixels in each puncta across channels
-
+%%  Convert all the data into zscores (very cheap base calling)
 num_puncta = size(puncta_centroids,1);
 
 %Pre-initialize the cell arrray and determine the basecalls
