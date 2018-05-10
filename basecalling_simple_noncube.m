@@ -2,7 +2,10 @@
 
 load(fullfile(params.transcriptResultsDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
 
-load('groundtruth_dictionary_neurons.mat')
+if ~exist('gtlabels','var')
+    load('groundtruth_dictionary_neurons.mat');
+end
+%load('groundtruth_dictionary_neurons.mat')
 %% Convert all the data into zscores (very cheap base calling)
 
 %Create a new variable, puncta_set, which is the cropped puncta_set_median
@@ -115,10 +118,7 @@ title(sprintf('Percentage of each base across rounds for %i puncta',size(base_ca
 
 
 %% Make sets of transcripts and create a new transcript object
-if ~exist('gtlabels','var')
-    load('groundtruth_dictionary_slice.mat');
-end
-%
+%The ground truth starts on Round4, so subtract 3 to get in alignment
 gt_mask = ROUNDS_TO_CALL-3;
 transcript_objects = cell(size(base_calls_quickzscore,1),1);
 
