@@ -1,10 +1,10 @@
 
 
-% load(fullfile(params.transcriptResultsDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
+load(fullfile(params.transcriptResultsDir,sprintf('%s_puncta_noncubepixels.mat',params.FILE_BASENAME)));
 % 
-% if ~exist('gtlabels','var')
-%     load('groundtruth_dictionary_neurons.mat');
-% end
+if ~exist('gtlabels','var')
+    load('groundtruth_dictionary_slice.mat');
+end
 %load('groundtruth_dictionary_neurons.mat')
 %% normalize all puncta intensities by their Z value
 
@@ -12,8 +12,7 @@
 %Create a new variable, puncta_set, which is the cropped puncta_set_median
 %for only the bases that we want to call. Given the first three bases are
 %magenta, this could screw things up.
-ROUNDS_TO_CALL = [4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20];
-% puncta_set = puncta_set_median_znormalized(ROUNDS_TO_CALL,:,:);
+ROUNDS_TO_CALL = [4 5 6 7 8 9 10 11 12 13 14 15 16 17 19];
 NUMCALLEDROUNDS = length(ROUNDS_TO_CALL);
 
 puncta_set_median_znormalized = zeros(size(puncta_set_median));
@@ -104,7 +103,7 @@ for rnd_idx = 1:NUMCALLEDROUNDS
         base_calls_quickzscore_confidence(p_idx,actual_rnd_idx) = scores_sorted(1)/(scores_sorted(1)+ scores_sorted(2));
         
         %use the baseguess to get the absolute brightness of the puncta
-        base_calls_pixel_intensity(p_idx,actual_rnd_idx) = puncta_set_median(rnd_idx,newbaseguess,p_idx);
+        base_calls_pixel_intensity(p_idx,actual_rnd_idx,:) = puncta_set_median(rnd_idx,:,p_idx);
         
         base_calls_zscores(p_idx,actual_rnd_idx,:) = scores;
     
@@ -137,10 +136,8 @@ title(sprintf('Percentage of each base across rounds for %i puncta',size(base_ca
 %The ground truth starts on Round4, so subtract 3 to get in alignment
 gt_mask = ROUNDS_TO_CALL-3;
 transcript_objects = cell(size(base_calls_quickzscore,1),1);
-
-output_cell = {}; ctr = 1;
-discarded_puncta = []; discard_ctr = 1;
-for p_idx = 1:size(base_calls_quickzscore,1)
+output_cell = cell(size(base_calls_quickzscore,1),1);
+parfor p_idx = 1:size(base_calls_quickzscore,1)
     
     transcript = struct;
     %Search for a perfect match in the ground truth codes
@@ -195,15 +192,13 @@ for p_idx = 1:size(base_calls_quickzscore,1)
         end
         row_string = sprintf('%s\n',row_string);
         fprintf('%s',row_string);
-        output_cell{ctr} = row_string; ctr = ctr+1;
+        output_cell{p_idx} = row_string; 
     end
     
     transcript_objects{p_idx} = transcript;
     
-    clear transcript; %Avoid any accidental overwriting
-    
     if mod(p_idx,1000) ==0
-        fprintf('%i/%i matched\n',p_idx,size(base_calls_quickzscore,6));
+        fprintf('%i/%i matched\n',p_idx,size(base_calls_quickzscore,1));
     end
 end
 fprintf('Done!\n');
