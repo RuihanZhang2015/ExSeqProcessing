@@ -12,7 +12,7 @@ end
 %Create a new variable, puncta_set, which is the cropped puncta_set_median
 %for only the bases that we want to call. Given the first three bases are
 %magenta, this could screw things up.
-ROUNDS_TO_CALL = [4 5 6 7 8 9 10 11 12 13 14 15 16 17 19];
+ROUNDS_TO_CALL = [4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 20];
 NUMCALLEDROUNDS = length(ROUNDS_TO_CALL);
 
 puncta_set_median_znormalized = zeros(size(puncta_set_median));
@@ -191,7 +191,7 @@ parfor p_idx = 1:size(base_calls_quickzscore,1)
             row_string = strcat(row_string,sprintf('%s,',gtlabels{indices(tiedindex)}));
         end
         row_string = sprintf('%s\n',row_string);
-        fprintf('%s',row_string);
+        %fprintf('%s',row_string);
         output_cell{p_idx} = row_string; 
     end
     
@@ -203,6 +203,7 @@ parfor p_idx = 1:size(base_calls_quickzscore,1)
 end
 fprintf('Done!\n');
 
+output_cell = output_cell(~cellfun('isempty',output_cell));  
 output_csv = strjoin(output_cell,'');
 
 output_file = fullfile(params.transcriptResultsDir,sprintf('%s_simpleextractedcodes_noncube.csv',params.FILE_BASENAME));
@@ -213,7 +214,6 @@ fclose(fileID);
 
 %%
 %remove the transcripts that had an empty round, likely because of the registration
-transcript_objects(discarded_puncta) = [];
 
 save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_objects_noncube.mat',params.FILE_BASENAME)),'transcript_objects','ROUNDS_TO_CALL','-v7.3');
 fprintf('Saved transcript_matches_objects!\n');

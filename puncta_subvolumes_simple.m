@@ -13,14 +13,14 @@ data_width = size(sample_img,2);
 data_depth = size(sample_img,3);
 
 
-num_insitu_transcripts = size(puncta_voxels{4},1);
+num_insitu_transcripts = size(puncta_voxels,1);
 
 %Define a puncta_set object that can be parallelized
 puncta_set_cell = cell(params.NUM_ROUNDS,1);
 pos_cell = cell(params.NUM_ROUNDS,1);
 
-
-for exp_idx = 1:params.NUM_ROUNDS
+parpool(5);
+parfor exp_idx = 1:params.NUM_ROUNDS
     disp(['round=',num2str(exp_idx)])
     
     %Load all channels of data into memory for one experiment
