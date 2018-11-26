@@ -7,10 +7,10 @@ load(fullfile(params.basecallingResultsDir,sprintf('%s_puncta_pixels.mat',params
 
 %Quick hack to make the rest of the code work:
 puncta_set = puncta_set_mean;
-puncta_set_bg = puncta_set_backgroundmedian;
+%puncta_set_bg = puncta_set_backgroundmedian;
 
-ROUNDS_TO_CALL =  4:20; 
-NUMCALLEDROUNDS = length(ROUNDS_TO_CALL);
+
+NUMCALLEDROUNDS = length(params.ROUNDS_TO_CALL);
 
 
 %%  Convert all the data into zscores (very cheap base calling)
@@ -32,7 +32,7 @@ clear dff fg bg chan_col;
 
 for rnd_idx = 1:NUMCALLEDROUNDS
     
-    actual_rnd_idx = ROUNDS_TO_CALL(rnd_idx);
+    actual_rnd_idx = params.ROUNDS_TO_CALL(rnd_idx);
     
     %fprintf('Looping through puncta from round %i\n',actual_rnd_idx);
     
@@ -41,14 +41,14 @@ for rnd_idx = 1:NUMCALLEDROUNDS
         %dff = (reshape(puncta_set(actual_rnd_idx,c,:),[],1)...
         %    -reshape(puncta_set_bg(actual_rnd_idx,c,:),[],1))./...
         %    reshape(puncta_set_bg(actual_rnd_idx,c,:),[],1);
-        fg(:,c) = reshape(puncta_set(actual_rnd_idx,c,:),[],1);    
-        bg(:,c) = reshape(puncta_set_bg(actual_rnd_idx,c,:),[],1);   
+        %fg(:,c) = reshape(puncta_set(actual_rnd_idx,c,:),[],1);    
+        %bg(:,c) = reshape(puncta_set_bg(actual_rnd_idx,c,:),[],1);   
         chan_col(:,c) = dff;
     end
     cols_normed = quantilenorm(chan_col);
     
     %how many puncta are less than the median?
-    dimmer_than_surrounding = sum(fg,2)<sum(bg,2);
+    %dimmer_than_surrounding = sum(fg,2)<sum(bg,2);
     %fprintf('Discarding %i puncta that are dimmer than the surroundings\n',...
     %    sum(dimmer_than_surrounding));
 
@@ -85,7 +85,7 @@ for rnd_idx = 1:NUMCALLEDROUNDS
 end %end looping over rounds
 
 %were there any NaNs in the computing? if so toss the read
-bad_reads = find(any(base_calls_confidence_fast(:,ROUNDS_TO_CALL)<3,2));
+bad_reads = find(any(base_calls_confidence_fast(:,params.ROUNDS_TO_CALL)<3,2));
 fprintf('Have to discard %i reads because of an NaN in confidence\n',length(bad_reads));
 base_calls(bad_reads,:) = [];
 base_calls_secondplace(bad_reads,:) = [];
@@ -100,9 +100,9 @@ fprintf('Found %i transcripts, %i of which are unique\n', ...
     size(base_calls,1),size(unique_transcipts,1));
 
 
-insitu_transcripts = base_calls(:,ROUNDS_TO_CALL);
-insitu_transcripts_2ndplace = base_calls_secondplace(:,ROUNDS_TO_CALL);
-insitu_transcripts_confidence = base_calls_confidence_fast(:,ROUNDS_TO_CALL);
+insitu_transcripts = base_calls(:,params.ROUNDS_TO_CALL);
+insitu_transcripts_2ndplace = base_calls_secondplace(:,params.ROUNDS_TO_CALL);
+insitu_transcripts_confidence = base_calls_confidence_fast(:,params.ROUNDS_TO_CALL);
 insitu_transcripts_confidence_fast = insitu_transcripts_confidence;
 save(fullfile(params.basecallingResultsDir,sprintf('%s_basecalls_meanpuncta.mat',params.FILE_BASENAME)),...
     'insitu_transcripts','insitu_transcripts_2ndplace','insitu_transcripts_confidence','insitu_transcripts_confidence_fast',...

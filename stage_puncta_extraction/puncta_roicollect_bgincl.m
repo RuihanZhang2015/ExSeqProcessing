@@ -10,15 +10,23 @@ num_insitu_transcripts = size(puncta_voxels,1);
 puncta_set_cell = cell(params.NUM_ROUNDS,1);
 puncta_set_cell_bgmean = cell(params.NUM_ROUNDS,1);
 puncta_set_cell_bgmedian = cell(params.NUM_ROUNDS,1);
-BGREGION_SEARCHXY = 30;
+BGREGION_SEARCHXY = 10;
 BGREGION_SEARCHZ = 5;
 %the puncta indices are here in linear form for a specific round
 
 fprintf('PUNCTA_MAX_POOL_SIZE=%d\n', params.PUNCTA_MAX_POOL_SIZE);
-parpool(params.PUNCTA_MAX_POOL_SIZE); %arbitrary but this parallel loop is memory intensive
+try
+    parpool(params.PUNCTA_MAX_POOL_SIZE); %arbitrary but this parallel loop is memory intensive
+catch
+    fprintf('Sees that the parpool has already been created')
+    delete(gcp('nocreate'));
+    parpool(params.PUNCTA_MAX_POOL_SIZE);
+end
+
 filename_punctaMask = fullfile(params.punctaSubvolumeDir,sprintf('%s_allsummedSummedNorm_puncta.%s',params.FILE_BASENAME,params.IMAGE_EXT));
 img_mask = load3DImage_uint16(filename_punctaMask)>0;
-    
+ 
+params.NUM_ROUNDS =20; %temp just for splintr   
 parfor exp_idx = 1:params.NUM_ROUNDS 
     disp(['round=',num2str(exp_idx)])
     pixels_per_rnd = []; pixels_per_rnd_bg = []; %Try to clear memory
@@ -49,9 +57,9 @@ parfor exp_idx = 1:params.NUM_ROUNDS
             z_min = floor(max(1,puncta_centroids(puncta_idx,3)-BGREGION_SEARCHZ+1));
             z_max = floor(min(size(img_mask,3),puncta_centroids(puncta_idx,3)+BGREGION_SEARCHZ));
             
-            img_subregion = img(y_min:y_max,x_min:x_max,z_min:z_max);
-            imgmask_subregion = img_mask(y_min:y_max,x_min:x_max,z_min:z_max);
-            background_pixels = img_subregion(~imgmask_subregion);
+            %img_subregion = img(y_min:y_max,x_min:x_max,z_min:z_max);
+            %imgmask_subregion = img_mask(y_min:y_max,x_min:x_max,z_min:z_max);
+            background_pixels = [0]; %img_subregion(~imgmask_subregion);
             
             pixels_per_rnd_bgmean{puncta_idx,c_idx} = mean(background_pixels);
             pixels_per_rnd_bgmedian{puncta_idx,c_idx} = median(background_pixels);
