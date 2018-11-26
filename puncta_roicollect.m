@@ -8,10 +8,7 @@ num_insitu_transcripts = size(puncta_voxels,1);
 
 %Define a puncta_set object that can be parallelized
 puncta_set_cell = cell(params.NUM_ROUNDS,1);
-puncta_set_cell_bgmean = cell(params.NUM_ROUNDS,1);
-puncta_set_cell_bgmedian = cell(params.NUM_ROUNDS,1);
-BGREGION_SEARCHXY = 10;
-BGREGION_SEARCHZ = 5;
+puncta_indices_cell = cell(params.NUM_ROUNDS,1);
 %the puncta indices are here in linear form for a specific round
 try
 parpool(3); %arbitrary but this parallel loop is memory intensive
@@ -20,66 +17,47 @@ fprintf('Sees that the parpool has already been created')
 delete(gcp('nocreate'));
 parpool(3);
 end
-filename_punctaMask = fullfile(params.punctaSubvolumeDir,sprintf('%s_allsummedSummedNorm_puncta.%s',params.FILE_BASENAME,params.IMAGE_EXT));
-img_mask = load3DImage_uint16(filename_punctaMask)>0;
  
-params.NUM_ROUNDS =20; %temp just for splintr   
 parfor exp_idx = 1:params.NUM_ROUNDS 
     disp(['round=',num2str(exp_idx)])
     pixels_per_rnd = []; pixels_per_rnd_bg = []; %Try to clear memory
     %clear pixels_per_rnd pixels_per_rnd_bg; 
     pixels_per_rnd = cell(num_insitu_transcripts,params.NUM_CHANNELS);
-    pixels_per_rnd_bgmean = cell(num_insitu_transcripts,params.NUM_CHANNELS);
-    pixels_per_rnd_bgmedian = cell(num_insitu_transcripts,params.NUM_CHANNELS);
+    pixindices_per_rnd = cell(num_insitu_transcripts,1); 
+    hasNotedIndices = false;
 
     for c_idx = params.COLOR_VEC
         filename_in = fullfile(params.registeredImagesDir,sprintf('%s_round%.03i_%s_%s.%s',params.FILE_BASENAME,exp_idx,params.CHAN_STRS{c_idx},regparams.REGISTRATION_TYPE,params.IMAGE_EXT));
         img =  load3DImage_uint16(filename_in);
-        %Leftover from an experiment of turning each image into a DFF calculation
-        %img_blur = imgaussfilt3(single(img),[30 30 30*(params.XRES/params.ZRES)]); 
-        %imgdff = (img-img_blur)./(img_blur);
-        %img = max(imgdff,0); 
+        
         for puncta_idx = 1:num_insitu_transcripts
-            
+           
             indices_for_puncta = puncta_voxels{puncta_idx};
             
+            if ~hasNotedIndices
+                 pixindices_per_rnd{puncta_idx} = indices_for_puncta;
+            end
+            
             %Get all the pixel intensity values for the puncta
-            pixels_per_rnd{puncta_idx,c_idx}= img(indices_for_puncta);
-             
-            %Get all the neighborhood pixels from the background
-            y_min = floor(max(1,puncta_centroids(puncta_idx,2)-BGREGION_SEARCHXY+1));
-            y_max = floor(min(size(img_mask,1),puncta_centroids(puncta_idx,2)+BGREGION_SEARCHXY));
-            x_min = floor(max(1,puncta_centroids(puncta_idx,1)-BGREGION_SEARCHXY+1));
-            x_max = floor(min(size(img_mask,2),puncta_centroids(puncta_idx,1)+BGREGION_SEARCHXY));
-            z_min = floor(max(1,puncta_centroids(puncta_idx,3)-BGREGION_SEARCHZ+1));
-            z_max = floor(min(size(img_mask,3),puncta_centroids(puncta_idx,3)+BGREGION_SEARCHZ));
+            pixels_per_rnd{puncta_idx,c_idx}= uint16(img(indices_for_puncta));
             
-            %img_subregion = img(y_min:y_max,x_min:x_max,z_min:z_max);
-            %imgmask_subregion = img_mask(y_min:y_max,x_min:x_max,z_min:z_max);
-            background_pixels = [0]; %img_subregion(~imgmask_subregion);
-            
-            pixels_per_rnd_bgmean{puncta_idx,c_idx} = mean(background_pixels);
-            pixels_per_rnd_bgmedian{puncta_idx,c_idx} = median(background_pixels);
-            
-            %iclear img_subregion imgmask_subregion background_pixels;       
+            %clear img_subregion imgmask_subregion background_pixels;       
             if mod(puncta_idx,10000)==0
                 fprintf('Rnd %i, Chan %i, Puncta %i processed\n',exp_idx,c_idx,puncta_idx);
             end
             
         end
-        
+        hasNotedIndices=true;
     end
     puncta_set_cell{exp_idx} = pixels_per_rnd;
-    puncta_set_cell_bgmean{exp_idx} = pixels_per_rnd_bgmean;
-    puncta_set_cell_bgmedian{exp_idx} = pixels_per_rnd_bgmedian;
+    puncta_indices_cell{exp_idx} = pixindices_per_rnd;
 end
+
 
 disp('reducing processed puncta')
 puncta_set_median = zeros(params.NUM_ROUNDS,params.NUM_CHANNELS,num_insitu_transcripts);
 puncta_set_max = zeros(params.NUM_ROUNDS,params.NUM_CHANNELS,num_insitu_transcripts);
 puncta_set_mean = zeros(params.NUM_ROUNDS,params.NUM_CHANNELS,num_insitu_transcripts);
-puncta_set_backgroundmean= zeros(params.NUM_ROUNDS,params.NUM_CHANNELS,num_insitu_transcripts);
-puncta_set_backgroundmedian= zeros(params.NUM_ROUNDS,params.NUM_CHANNELS,num_insitu_transcripts);
 % reduction of parfor
 for puncta_idx = 1:num_insitu_transcripts
     for exp_idx = 1:params.NUM_ROUNDS
@@ -88,10 +66,6 @@ for puncta_idx = 1:num_insitu_transcripts
             % pixels_per_rnd = cell(num_insitu_transcripts,params.NUM_CHANNELS);
             pixel_vector = puncta_set_cell{exp_idx}{puncta_idx,c_idx};
             
-            pixel_vector_bgmean = puncta_set_cell_bgmean{exp_idx}{puncta_idx,c_idx};
-            pixel_vector_bgmedian = puncta_set_cell_bgmedian{exp_idx}{puncta_idx,c_idx}; 
-            puncta_set_backgroundmedian(exp_idx,c_idx,puncta_idx) = pixel_vector_bgmedian;
-            puncta_set_backgroundmean(exp_idx,c_idx,puncta_idx) = pixel_vector_bgmean;
             
             puncta_set_median(exp_idx,c_idx,puncta_idx) = median(pixel_vector);
             puncta_set_max(exp_idx,c_idx,puncta_idx) = max(pixel_vector);
@@ -103,12 +77,6 @@ for puncta_idx = 1:num_insitu_transcripts
     end
 end
 
-% Using median values to ignore bad points
-%channels_present = squeeze(sum(puncta_set_median==0,2));
-%num_roundspresent_per_puncta = squeeze(sum(channels_present==0,1));
-%Create a mask of all puncta that have a non-zero signal in all four
-%channels for all rounds
-%signal_complete = num_roundspresent_per_puncta==params.NUM_ROUNDS;
 
 % Using median values to ignore bad points
 %Puncta set median is NUM_ROUNDS x NUM_CHANNELS x NUM_PUNCTA
@@ -127,15 +95,25 @@ num_roundsmissing_per_puncta = squeeze(sum(channels_notpresent>3,1));
 %When we high pass the signal before this step, there are a lot of zeros
 %so we can be more lenient. We allow two channels to be empty now, meaning
 %the pixel value was less than the low passed value
-signal_complete = num_roundsmissing_per_puncta==0;
+
+%signal_complete = num_roundsmissing_per_puncta==0;
+%Working to keep puncta even when missing up to one round
+signal_complete = num_roundsmissing_per_puncta<=params.MAXNUM_MISSINGROUND;
 
 fprintf('Number of complete puncta: %i \n',sum(signal_complete));
+
+%Apply the signal complete filter before saving the raw data
+for exp_idx = 1:params.NUM_ROUNDS
+    puncta_set_cell{exp_idx} = puncta_set_cell{exp_idx}(signal_complete,:);
+    puncta_indices_cell{exp_idx} = puncta_indices_cell{exp_idx}(signal_complete);
+end
+
+outputfile = fullfile(params.transcriptResultsDir,sprintf('%s_punctavoxels.mat',params.FILE_BASENAME));
+save(outputfile,'puncta_set_cell','puncta_indices_cell','-v7.3');
 
 puncta_set_median = puncta_set_median(:,:,signal_complete);
 puncta_set_max = puncta_set_max(:,:,signal_complete);
 puncta_set_mean = puncta_set_mean(:,:,signal_complete);
-puncta_set_backgroundmean = puncta_set_backgroundmean(:,:,signal_complete);
-puncta_set_backgroundmedian = puncta_set_backgroundmedian(:,:,signal_complete);
 
 puncta_centroids = puncta_centroids(signal_complete,:);
 
@@ -145,6 +123,5 @@ puncta_voxels = puncta_voxels(indices_of_good_puncta);
 
 outputfile = fullfile(params.transcriptResultsDir,sprintf('%s_puncta_pixels.mat',params.FILE_BASENAME));
 save(outputfile,'puncta_set_median','puncta_set_max','puncta_set_mean',...
-    'puncta_centroids','puncta_voxels','puncta_set_backgroundmean',...
-    'puncta_set_backgroundmedian','-v7.3');
+    'puncta_centroids','puncta_voxels','-v7.3');
 

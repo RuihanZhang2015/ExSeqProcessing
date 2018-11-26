@@ -17,6 +17,9 @@ if minEditDist==0
     return
 end
 
+%QUICK TEST
+dictmatchidx=-1;
+return;
 
 changeablebases = find(confidence<=confThreshChange);
 unchangeablebases = find(confidence>confThreshFixed);

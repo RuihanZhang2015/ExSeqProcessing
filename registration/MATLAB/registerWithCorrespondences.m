@@ -32,7 +32,7 @@ if exist(output_affine_filename,'file')
 end
 %Load a full-res image 
 filename = fullfile(regparams.INPUTDIR,sprintf('%s_round%03d_%s.%s',...
-    filename_root,regparams.FIXED_RUN,regparams.CHANNELS{1},params.IMAGE_EXT ));
+    filename_root,regparams.FIXED_RUN,regparams.CHANNELS{end},params.IMAGE_EXT ));
 imgFixed_total = load3DImage_uint16(filename);
 %Loading the keys, possibly from the downsampled data
 output_keys_filename = fullfile(regparams.OUTPUTDIR,sprintf('globalkeys_%s-downsample_round%03d.mat',params.FILE_BASENAME,moving_run));

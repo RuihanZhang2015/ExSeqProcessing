@@ -1,30 +1,26 @@
 %% To load multiple basecalls:
 
-%LIBRARY_FILE = 'groundtruth_dictionary_neuronsv6_unique_filtered.mat';
-LIBRARY_FILE = 'groundtruth_dictionary_neurons_v6_unique_everything_highcomplex.mat';
-%LIBRARY_FILE = 'groundtruth_dictionary_slice_v6_unique_everything_highcomplex.mat';
+LIBRARY_FILE = 'groundtruth_dictionary_preslice_v6_everythinguniquehighcomplex.mat';
 
 ptr = 1;
 
-for fov_index = [11 12 13 14 16 17 18 19 20]; %1 2 3 4 7 8 9 10] %4 6 7 8
-    
-    loadParameters;
-    params.deconvolutionImagesDir= sprintf('/mp/nas0/ExSeq/AutoSeq2/xy%.2i/1_deconvolution',fov_index);
-    params.colorCorrectionImagesDir= sprintf('/mp/nas0/ExSeq/AutoSeq2/xy%.2i/2_color-correction',fov_index);
-    params.normalizedImagesDir = sprintf('/mp/nas0/ExSeq/AutoSeq2/xy%.2i/3_normalization',fov_index);
-    params.registeredImagesDir = sprintf('/mp/nas0/ExSeq/AutoSeq2/xy%.2i/4_registration',fov_index);
-    params.punctaSubvolumeDir = sprintf('/mp/nas0/ExSeq/AutoSeq2/xy%.2i/5_puncta-extraction',fov_index);
-    params.transcriptResultsDir = sprintf('/mp/nas0/ExSeq/AutoSeq2/xy%.2i/6_transcripts',fov_index);
-    params.FILE_BASENAME = sprintf('exseqauto-xy%.2iHP',fov_index);
+    fov_index=3;
+ loadParameters;
+    params.deconvolutionImagesDir= sprintf('/mp/nas0/ExSeq/AutoSeqHippocampus/a%i/1_deconvolution',fov_index);
+    params.colorCorrectionImagesDir= sprintf('/mp/nas0/ExSeq/AutoSeqHippocampus/a%i/2_color-correction',fov_index);
+    params.normalizedImagesDir = sprintf('/mp/nas0/ExSeq/AutoSeqHippocampus/a%i/3_normalization',fov_index);
+    params.registeredImagesDir = sprintf('/mp/nas0/ExSeq/AutoSeqHippocampus/a%i/4_registration',fov_index);
+    params.punctaSubvolumeDir = sprintf('/mp/nas0/ExSeq/AutoSeqHippocampus/a%i/5_puncta-extraction',fov_index);
+    params.transcriptResultsDir = sprintf('/mp/nas0/ExSeq/AutoSeqHippocampus/a%i/6_transcripts',fov_index);
+    params.FILE_BASENAME = sprintf('exseqauto-a%i',fov_index);
     params.NUM_ROUNDS = 20;
 
-if 0    
-params.FILE_BASENAME = replace(params.FILE_BASENAME,'HP','');
 CHAN_STRS = {'summedNorm','ch00','ch01SHIFT','ch02SHIFT','ch03SHIFT'};
 
+regparams.FIXED_RUN = 5;
 parfor exp_idx = 1:20
     for c_idx = 1:length(CHAN_STRS)
-            
+
             if exp_idx == regparams.FIXED_RUN
                 if strcmp(CHAN_STRS{c_idx},'summedNorm')
                     filename_in = fullfile(params.normalizedImagesDir,sprintf('%s_round%.03i_%s.tif',params.FILE_BASENAME,exp_idx,CHAN_STRS{c_idx}));
@@ -36,9 +32,9 @@ parfor exp_idx = 1:20
             else
                 filename_in = fullfile(params.registeredImagesDir,sprintf('%s_round%.03i_%s_affine.tif',params.FILE_BASENAME,exp_idx,CHAN_STRS{c_idx}));
             end
-            
+
             filename_out = fullfile(params.registeredImagesDir,sprintf('%sHP_round%.03i_%s_affine.tif',params.FILE_BASENAME,exp_idx,CHAN_STRS{c_idx}));
-            
+
             if exist(filename_out,'file')
                 fprintf('Sees %s already exists\n',filename_out);
                 continue
@@ -47,19 +43,19 @@ parfor exp_idx = 1:20
 
             img_blur = imgaussfilt3(single(img),[30 30 30*(params.XRES/params.ZRES)]);
             imgdff = (img-img_blur); %./(img_blur);
-            img = max(imgdff,0);            
+            img = max(imgdff,0);
             save3DTif_uint16(img, filename_out);
     end
 end
 
-    params.FILE_BASENAME = sprintf('exseqauto-xy%.2iHP',fov_index);
+    params.FILE_BASENAME = sprintf('exseqauto-a%iHP',fov_index);
     punctafeinder; puncta_roicollect_bgincl;
- end   
- basecalling;
+
+    basecalling;
     
     num_reads = size(insitu_transcripts,1);
     
-    
+    fov_index =2; 
     insitu_transcripts_total(ptr:ptr+num_reads-1,:) = insitu_transcripts;
     insitu_transcripts_2ndplace_total(ptr:ptr+num_reads-1,:) = insitu_transcripts_2ndplace;
     insitu_transcripts_confidence_total(ptr:ptr+num_reads-1,:) = insitu_transcripts_confidence_fast;
@@ -70,8 +66,6 @@ end
     fovs(ptr:ptr+num_reads-1) = fov_index;
     
     ptr = ptr+num_reads;
-    fprintf('Completed round %i\n',fov_index);
-end
 
 readlength = size(insitu_transcripts_total,2);
 
@@ -90,7 +84,7 @@ if ~exist('gtlabels','var')
 end
 
 ST_confThresh_changeable = 2;
-ST_confThresh_fixed = 20;
+ST_confThresh_fixed = 6;
 ST_editScoreMax = 2;
 ST_numDrops = 100;
 
@@ -126,7 +120,6 @@ puncta_centroids_keep = puncta_centroids_filtered(indices_keep,:);
 puncta_voxels_keep = puncta_voxels_filtered(indices_keep);
 fovs_keep = fovs_filtered(indices_keep);
 
-indices_filtered = indices_filtered_entropy(indices_keep);
 fprintf('Removed %i garbage reads removal \n',...
     length(indices_filtered_entropy) - length(indices_keep));
 
@@ -210,7 +203,6 @@ puncta_centroids_keep(perfect_match_indices,:) = [];
 puncta_voxels_keep(perfect_match_indices) = [];
 fovs_keep(perfect_match_indices) = [];
 
-indices_filtered(perfect_match_indices) = [];
 %% Remove any entries with less than
 
 LOWQUALITY_BASECALL = 5; %Was 5 up until 9/9/2018
@@ -227,11 +219,8 @@ base_calls_normedpixel_intensity_keep(indices_discard,:,:) = [];
 puncta_centroids_keep(indices_discard,:) = [];
 puncta_voxels_keep(indices_discard) = [];
 fovs_keep(indices_discard) = [];
-
-indices_filtered(indices_discard) = [];
 fprintf('Removed %i in situ with too many low quality bases\n',length(indices_discard));
 
-save('puncta_indices.mat','indices_filtered');
 
 %Before aligning using MATLAB, save the filterd data as FASTQ
 %headers = cell(size(insitu_transcripts_keep,1),1);
@@ -350,8 +339,8 @@ transcript_objects_all = [transcript_objects', perfect_matches];
 
 didalign_mask = cell2mat(cellfun(@(x) [isfield(x,'name')], transcript_objects_all,'UniformOutput',0));
 
-output_file = fullfile(params.transcriptResultsDir,'xy11-20combinedcodes_dffnoz_meanpucta.csv');
-writeCSVfromTranscriptObjects(transcript_objects_all(didalign_mask),output_file)
+%output_file = fullfile(params.transcriptResultsDir,'xy1-10combinedcodes_dffnoz_meanpucta.csv');
+%writeCSVfromTranscriptObjects(transcript_objects_all(didalign_mask),output_file)
 
 false_hits = sum(shufflehits);
 
@@ -359,13 +348,13 @@ fprintf('Saved transcript_matches_objects! %i hits w %i shuffledhits \n',length(
 %%
 
 
-save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmedian_noz_allqualityreads.mat','xy11-20')),...
+save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmedian_noz_allqualityreads.mat','xy1-10')),...
     'ST_confThresh_fixed','ST_confThresh_changeable','ST_editScoreMax','transcript_objects_all',...
     'GARBAGE_READ_MEAN','LOWQUALITY_BASECALL','LIBRARY_FILE','LOWQUALITY_BASECALL','LOWQUALITY_NUMBERALLOWABLE','false_hits','-v7.3');
 
 
 transcript_objects = transcript_objects_all(didalign_mask);
-save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmediannoz_alignedreads.mat','xy11-20')),...
+save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmediannoz_alignedreads.mat','xy1-10')),...
     'ST_confThresh_fixed','ST_confThresh_changeable','ST_editScoreMax','transcript_objects',...
     'GARBAGE_READ_MEAN','LOWQUALITY_BASECALL','LIBRARY_FILE','LOWQUALITY_BASECALL','LOWQUALITY_NUMBERALLOWABLE','false_hits','-v7.3');
 

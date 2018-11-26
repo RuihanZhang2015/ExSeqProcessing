@@ -1,6 +1,6 @@
 %% To load multiple basecalls:
 
-LIBRARY_FILE = 'groundtruth_dictionary_splintr2';
+LIBRARY_FILE = 'groundtruth_dictionary_splintr20180621';
 ptr = 1;
 
 loadParameters;
@@ -29,16 +29,13 @@ puncta_voxels = puncta_voxels_total;
 
 %%
 
-%LIBRARY_FILE = 'groundtruth_slice_yfp+qs30+locomp.mat';
-%LIBRARY_FILE = 'groundtruth_dictionary_slice_v6_unique_filtered.mat';
-%LIBRARY_FILE = 'groundtruth_dictionary_neuronsv6_unique_filtered.mat';
 if ~exist('gtlabels','var')
     load(LIBRARY_FILE);
 end
 
 ST_confThresh_changeable = 2;
 ST_confThresh_fixed = 6;
-ST_editScoreMax = 1;
+ST_editScoreMax = 0;
 ST_numDrops = 100;
 
 %% Remove low complexity reads first:
@@ -62,7 +59,7 @@ puncta_voxels_filtered = puncta_voxels(indices_filtered_entropy);
 
 %% Now remove garbage reads
 %Garbage is the mean confidence is less than 5
-GARBAGE_READ_MEAN= 5; %As a test, change from 5 to an impossible number
+GARBAGE_READ_MEAN= 10; %As a test, change from 5 to an impossible number
 indices_keep = find(mean(insitu_transcripts_confidence_filtered,2)>GARBAGE_READ_MEAN);
 
 insitu_transcripts_keep = insitu_transcripts_filtered(indices_keep,:);
@@ -95,6 +92,10 @@ perfect_matches = {};
 %perfect_match_indices = [];
 perfect_match_ctr = 1;
 
+%Quick shuffle test from the top:
+%shuffleindices = randperm(length(params.ROUNDS_TO_CALL));
+%insitu_transcripts_keep = insitu_transcripts_keep(:,shuffleindices);
+
 searchForPerfects = true;
 if searchForPerfects
     tic
@@ -102,7 +103,7 @@ if searchForPerfects
     %Parallelize the search for a perfect match
     parfor t = 1:size(insitu_transcripts_confidence_keep,1)
         img_transcript = insitu_transcripts_keep(t,:);
-        hasPerfectMatch(t) = sum(sum(groundtruth_codes == img_transcript,2)==readlength)>0;
+        hasPerfectMatch(t) = sum(sum(groundtruth_codes(:,params.ROUNDS_TO_CALL) == img_transcript,2)==readlength)>0;
     end
     
     %Then for the matches that we have found, create the transcript objects from them
@@ -112,7 +113,7 @@ if searchForPerfects
             img_transcript = insitu_transcripts_keep(t,:);
             img_transcript_2ndplace = insitu_transcripts_2ndplace_keep(t,:);
             
-            perfect_match = find(sum(groundtruth_codes == img_transcript,2)==readlength);
+            perfect_match = find(sum(groundtruth_codes(:,params.ROUNDS_TO_CALL) == img_transcript,2)==readlength);
 
 
             transcript = struct;
@@ -133,7 +134,7 @@ if searchForPerfects
             img_transcript_2ndplace_SHUFFLED = insitu_transcripts_2ndplace_keep(shuffleindices);
             img_confidence = insitu_transcripts_confidence_keep(t,:);
             img_confidence_SHUFFLED = img_confidence(shuffleindices);
-            [matchingIdxSHUFFLED, ~] = shaharTieSeconds(img_transcript_SHUFFLED,img_confidence_SHUFFLED',groundtruth_codes,gtlabels,ST_confThresh_fixed,ST_numDrops,ST_editScoreMax);
+            [matchingIdxSHUFFLED, ~] = shaharTieSeconds(img_transcript_SHUFFLED,img_transcript_2ndplace_SHUFFLED,img_confidence_SHUFFLED',groundtruth_codes(:,params.ROUNDS_TO_CALL),ST_confThresh_fixed,ST_numDrops,ST_editScoreMax);
             %Note if the shuffled version of this transcript got a match!
             %Use the index (1) just in case there are multiple hits
             transcript.shufflehit = matchingIdxSHUFFLED(1)>0;
@@ -162,7 +163,7 @@ puncta_voxels_keep(perfect_match_indices) = [];
 %% Remove any entries with less than
 
 LOWQUALITY_BASECALL = 5; %Was 5 up until 9/9/2018
-LOWQUALITY_NUMBERALLOWABLE = 6;
+LOWQUALITY_NUMBERALLOWABLE = 3;
 
 indices_discard = find(...
     sum(insitu_transcripts_confidence_keep<LOWQUALITY_BASECALL,2)>LOWQUALITY_NUMBERALLOWABLE);
@@ -205,7 +206,7 @@ random_indices = randperm(size(insitu_transcripts_keep,1),SAMPLE_SIZE);
 shufflehits = zeros(size(insitu_transcripts_keep,1),1);
 
 hits_pos = zeros(size(insitu_transcripts_keep,1),1);
-parfor p_idx= 1:size(insitu_transcripts_keep,1) %r_idx = 1:length(random_indices)  %
+for p_idx= 1:size(insitu_transcripts_keep,1) %r_idx = 1:length(random_indices)  %
 
 %for r_idx = 1:length(random_indices)  %
     %    p_idx = random_indices(r_idx);
@@ -222,9 +223,9 @@ parfor p_idx= 1:size(insitu_transcripts_keep,1) %r_idx = 1:length(random_indices
     img_confidence_SHUFFLED = img_confidence(shuffleindices);
     %Match the real thing
     
-    [matchingIdx, best_score] = shaharTieSeconds(img_transcript,img_confidence',groundtruth_codes,gtlabels,ST_confThresh_fixed,ST_numDrops,ST_editScoreMax);
+    [matchingIdx, best_score] = shaharTieSeconds(img_transcript,img_transcript_2ndplace,img_confidence',groundtruth_codes(:,params.ROUNDS_TO_CALL),ST_confThresh_fixed,ST_numDrops,ST_editScoreMax);
     %Match a shuffled version as a control
-   [matchingIdxSHUFFLED, ~] = shaharTieSeconds(img_transcript_SHUFFLED,img_confidence_SHUFFLED',groundtruth_codes,gtlabels,ST_confThresh_fixed,ST_numDrops,ST_editScoreMax);
+   [matchingIdxSHUFFLED, ~] = shaharTieSeconds(img_transcript_SHUFFLED,img_transcript_2ndplace_SHUFFLED,img_confidence_SHUFFLED',groundtruth_codes(:,params.ROUNDS_TO_CALL),ST_confThresh_fixed,ST_numDrops,ST_editScoreMax);
     %Note if the shuffled version of this transcript got a match!
     %Use the index (1) just in case there are multiple hits
     shufflehits(p_idx) = matchingIdxSHUFFLED(1)>0;
@@ -299,21 +300,21 @@ transcript_objects_all = [transcript_objects', perfect_matches];
 didalign_mask = cell2mat(cellfun(@(x) [isfield(x,'name')], transcript_objects_all,'UniformOutput',0));
 
 output_file = fullfile(params.transcriptResultsDir,'xy1-10combinedcodes_dffnoz_meanpucta.csv');
-writeCSVfromTranscriptObjects(transcript_objects_all(didalign_mask),output_file)
+%writeCSVfromTranscriptObjects(transcript_objects_all(didalign_mask),output_file)
 
-false_hits = sum(shufflehits);
+%false_hits = sum(shufflehits);
 
-fprintf('Saved transcript_matches_objects! %i hits w %i shuffledhits \n',sum(hits_pos)+length(perfect_matches),false_hits);
+%fprintf('Saved transcript_matches_objects! %i hits w %i shuffledhits \n',sum(hits_pos)+length(perfect_matches),false_hits);
 %%
 
 
-save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmedian_noz_allqualityreads.mat','xy1-10')),...
+save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_allqualityreads.mat',params.FILE_BASENAME)),...
     'ST_confThresh_fixed','ST_confThresh_changeable','ST_editScoreMax','transcript_objects_all',...
-    'GARBAGE_READ_MEAN','LOWQUALITY_BASECALL','LIBRARY_FILE','LOWQUALITY_BASECALL','LOWQUALITY_NUMBERALLOWABLE','false_hits','-v7.3');
+    'GARBAGE_READ_MEAN','LOWQUALITY_BASECALL','LIBRARY_FILE','LOWQUALITY_BASECALL','LOWQUALITY_NUMBERALLOWABLE','-v7.3');
 
 
 transcript_objects = transcript_objects_all(didalign_mask);
-save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmediannoz_alignedreads.mat','xy1-10')),...
+save(fullfile(params.transcriptResultsDir,sprintf('%s_transcriptmatches_dffmediannoz_alignedreads.mat',params.FILE_BASENAME)),...
     'ST_confThresh_fixed','ST_confThresh_changeable','ST_editScoreMax','transcript_objects',...
-    'GARBAGE_READ_MEAN','LOWQUALITY_BASECALL','LIBRARY_FILE','LOWQUALITY_BASECALL','LOWQUALITY_NUMBERALLOWABLE','false_hits','-v7.3');
+    'GARBAGE_READ_MEAN','LOWQUALITY_BASECALL','LIBRARY_FILE','LOWQUALITY_BASECALL','LOWQUALITY_NUMBERALLOWABLE','-v7.3');
 
