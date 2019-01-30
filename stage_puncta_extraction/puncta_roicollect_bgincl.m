@@ -14,7 +14,6 @@ BGREGION_SEARCHXY = 10;
 BGREGION_SEARCHZ = 5;
 %the puncta indices are here in linear form for a specific round
 
-fprintf('PUNCTA_MAX_POOL_SIZE=%d\n', params.PUNCTA_MAX_POOL_SIZE);
 try
     parpool(params.PUNCTA_MAX_POOL_SIZE); %arbitrary but this parallel loop is memory intensive
 catch
